@@ -10,8 +10,10 @@
 %%%% Interface
 
 start(N) ->
-  {Reducer, Mappers} = init(N), %% we get the reducer and mappers form the init function
-  {ok, spawn(fun() -> coordinator_loop(Reducer, Mappers) end)}. %% after that we get start the coordinator loop
+  %% we get the reducer and mappers form the init function
+  {Reducer, Mappers} = init(N),
+  %% after that we get start the coordinator loop
+  {ok, spawn(fun() -> coordinator_loop(Reducer, Mappers) end)}.
 
 
 stop(Pid) ->
@@ -74,7 +76,7 @@ coordinator_loop(Reducer, Mappers) ->
       stop_async(Reducer),
       reply_ok(From);
     {From, {init, MapFun, RedFun, RedInit, Data}} ->
-      io:format("~p initializing the reducer and mappers~n", [self()]),
+      % io:format("~p initializing the reducer and mappers~n", [self()]),
       %% get the length of the list of elements to analyze
       DataLength = length(Data),
       %% initialize the reducer
@@ -93,7 +95,7 @@ coordinator_loop(Reducer, Mappers) ->
       reply_ok(Jid, Result),
       coordinator_loop(Reducer, Mappers);
     Unknown ->
-      io:format("[CL] unknown message: ~p~n",[Unknown]),
+      io:format("[CL] Unknown message: ~p~n",[Unknown]),
       coordinator_loop(Reducer, Mappers)
     end.
 
@@ -107,22 +109,21 @@ init_mappers([],_) ->
     done.
 
 send_data(Mappers, Data) ->
-    send_loop(Mappers, Mappers, Data).
+    recursive_send(Mappers, Mappers, Data).
 
-send_loop(Mappers, [Mid|Queue], [D|Data]) ->
+recursive_send(Mappers, [Mid|Queue], [D|Data]) ->
     data_async(Mid, D),
-    send_loop(Mappers, Queue, Data);
-send_loop(_, _, []) -> ok;
-send_loop(Mappers, [], Data) ->
-    send_loop(Mappers, Mappers, Data).
+    recursive_send(Mappers, Queue, Data);
+recursive_send(Mappers, [], Data) ->
+    recursive_send(Mappers, Mappers, Data);
+recursive_send(_, _, []) -> ok.
 
 
 %%% Reducer
-
 reducer_loop() ->
   receive
     stop ->
-      io:format("Reducer ~p stopping~n", [self()]),
+      % io:format("Reducer ~p stopping~n", [self()]),
       ok;
     {From, {start, RedFun, RedInit, Len, Jid}} ->
 
@@ -133,7 +134,7 @@ reducer_loop() ->
       Res,
       reducer_loop();
     Unknown ->
-      io:format("[RL] unknown message: ~p~n",[Unknown]),
+      io:format("[RL] Unknown message: ~p~n",[Unknown]),
       reducer_loop()
   end.
 
@@ -152,7 +153,7 @@ gather_data_from_mappers(Fun, Acc, Missing) ->
         true -> async(self(),{stop_gather,Res})
       end;
   Unknown ->
-      io:format("[GDFM] unknown message: ~p~n",[Unknown]),
+      io:format("[GDFM] Unknown message: ~p~n",[Unknown]),
       gather_data_from_mappers(Fun, Acc, Missing)
 end.
 
@@ -162,9 +163,10 @@ end.
 mapper_loop(Reducer, Fun) ->
   receive
     stop ->
-      io:format("Mapper ~p stopping~n", [self()]),
+      % io:format("Mapper ~p stopping~n", [self()]),
       ok;
     {_, {init, NewFun}} ->
+      %% change the function according to the job at hand
       %reply_ok(From),
       mapper_loop(Reducer, NewFun);
     {data, Data} ->
@@ -173,6 +175,6 @@ mapper_loop(Reducer, Fun) ->
       async(Reducer,{self(), {result, Res}}),
       mapper_loop(Reducer, Fun);
     Unknown ->
-      io:format("[ML] unknown message: ~p~n",[Unknown]),
+      io:format("[ML] Unknown message: ~p~n",[Unknown]),
       mapper_loop(Reducer, Fun)
   end.
