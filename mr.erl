@@ -127,9 +127,8 @@ reducer_loop() ->
       % io:format("Reducer ~p stopping~n", [self()]),
       ok;
     {From, {start, RedFun, RedInit, Len, Jid}} ->
-
-      {stop_gather, AllResDone} = gather_data_from_mappers(RedFun, RedInit, Len),
-      async(From, {self(),{done, AllResDone, Jid}}),
+      {stop_gather, OverallRes} = gather_data_from_mappers(RedFun, RedInit, Len),
+      async(From, {self(),{done, OverallRes, Jid}}),
       reducer_loop();
     {stop_gather, Res} ->
       Res,

@@ -7,8 +7,8 @@ implement map-reduce algorithms.  The goal is to implement a simple map-reduce
 framework, and then use this framework to process the musiXmatch dataset (mxm),
 the official collection of lyrics from the Million Song Dataset.
 
-Part I Implementation
----------------------
+Part I Framework Implementation
+-------------------------------
 
 ### 1. Initialization phase
 
@@ -103,3 +103,46 @@ The mapper receives the data and applies the function to the chunk of data and
 sends the result to the reducer .
 
 #### Reducer gathering
+
+```erlang
+%%% get data from mappers
+gather_data_from_mappers(Fun, Acc, Missing) ->
+  receive
+    {stop_gather, Acc} ->
+      %% return the accumulator
+      Acc;
+    {_, {result, ChunkOfData}} ->
+      Res = (lists:foldl(Fun, Acc, ChunkOfData)),
+      Miss = Missing - 1,
+      if Miss >= 1 ->
+        gather_data_from_mappers(Fun, Res, Miss);
+        true -> async(self(),{stop_gather,Res})
+      end;
+  Unknown ->
+      io:format("[GDFM] Unknown message: ~p~n",[Unknown]),
+      gather_data_from_mappers(Fun, Acc, Missing)
+end.
+```
+
+We fold to the left the list of data and continue to do so until we finish the
+computation that's being added to the accumulator `Acc`. Then we send a `stop_gather`
+and return the value in the accumulator `Acc`.
+
+Part II MusicXMatch Dataset Analysis
+------------------------------------
+
+TODO
+
+Testing
+-------
+
+###Usage:
+
+####1. Compile using make
+```bash
+user:shell$ make test
+```
+####2. Run the tests
+```erlang
+1> tester:test().
+```
