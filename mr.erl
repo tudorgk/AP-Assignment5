@@ -108,6 +108,7 @@ init_mappers([Mid|Mappers], MapFun)->
 init_mappers([],_) ->
     done.
 
+%%send data to mappers
 send_data(Mappers, Data) ->
     recursive_send(Mappers, Mappers, Data).
 

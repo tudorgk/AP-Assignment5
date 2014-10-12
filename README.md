@@ -55,3 +55,51 @@ We find the length of the data list (`DataLength`). Then we send the reducer fun
 the coordinator. After that we init the mappers with the map function (`MapFun`).
 
 ### 2. Putting the processes to work!
+
+#### Coordinator start
+
+```erlang
+...
+
+{_, {start, Data}} ->
+  %% send data to the mappers
+  send_data(Mappers, Data),
+  coordinator_loop(Reducer, Mappers);
+
+...
+
+%%send data to mappers
+send_data(Mappers, Data) ->
+    recursive_send(Mappers, Mappers, Data).
+
+recursive_send(Mappers, [Mid|Queue], [D|Data]) ->
+    data_async(Mid, D),
+    recursive_send(Mappers, Queue, Data);
+recursive_send(Mappers, [], Data) ->
+    recursive_send(Mappers, Mappers, Data);
+recursive_send(_, _, []) -> ok.
+
+...
+```
+
+The coordinator sends the data to the mappers by redistributing piece by piece
+until we are left out of data chunks.
+
+#### Mapper receive
+
+```erlang
+...
+
+{data, Data} ->
+  % io:format("Data: ~p~n", [Data]),
+  Res = lists:map(Fun,[Data]),
+  async(Reducer,{self(), {result, Res}}),
+  mapper_loop(Reducer, Fun);
+
+...
+```
+
+The mapper receives the data and applies the function to the chunk of data and
+sends the result to the reducer .
+
+#### Reducer gathering
